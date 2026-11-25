@@ -1,0 +1,88 @@
+name: Compilar y firmar TodoInstala
+
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: Solicitar la firma de publicacion en SignPath
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: windows-2025
+    timeout-minutes: 95
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Compilar instalador
+        shell: powershell
+        run: ./tools/build-installer.ps1
+      - name: Comprobar metadatos
+        shell: powershell
+        run: |
+          $binary = Get-Item -LiteralPath 'installer/build/CatalogoBase.exe'
+          $build = Get-Content -LiteralPath 'installer/build/build.json' -Raw | ConvertFrom-Json
+          if ($binary.VersionInfo.ProductName -ne 'TodoInstala' -or
+              $binary.VersionInfo.ProductVersion -ne $build.version -or
+              (Get-FileHash -LiteralPath $binary.FullName).Hash -ne $build.binaryHash) {
+            throw 'La compilacion no coincide con los metadatos esperados.'
+          }
+          "PRODUCT_VERSION=$($build.version)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Guardar ejecutable para verificar su origen
+        id: unsigned
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: todoinstala-unsigned
+          path: installer/build/CatalogoBase.exe
+          if-no-files-found: error
+          retention-days: 3
+      - name: Solicitar firma de SignPath
+        if: ${d} inputs.sign && github.ref_name == github.event.repository.default_branch }}
+        uses: signpath/github-action-submit-signing-request@a2c5b60d9c75f073142b653c354b632eedce097b # v3
+        with:
+          api-token: ${d} secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${d} vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${d} vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${d} vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${d} vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${d} steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 4800
+          output-artifact-directory: signed
+          parameters: |
+            version: ${d} toJSON(env.PRODUCT_VERSION) }}
+      - name: Validar firma y sello de tiempo
+        if: ${d} inputs.sign && github.ref_name == github.event.repository.default_branch }}
+        shell: powershell
+        run: |
+          $signature = Get-AuthenticodeSignature -LiteralPath 'signed/CatalogoBase.exe'
+          if ($signature.Status -ne 'Valid' -or !$signature.TimeStamperCertificate -or
+              $signature.SignerCertificate.GetNameInfo([Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false) -ne 'SignPath Foundation') {
+            throw 'Se esperaba una firma valida de SignPath Foundation con sello de tiempo.'
+          }
+          $binaryName = 'signed-' + [Guid]::NewGuid().ToString('N') + '.exe'
+          Rename-Item -LiteralPath 'signed/CatalogoBase.exe' -NewName $binaryName
+          Copy-Item -LiteralPath 'installer/build/CatalogoBase.exe', 'installer/build/build.json' -Destination signed
+          $build = Get-Content -LiteralPath 'signed/build.json' -Raw | ConvertFrom-Json
+          $metadata = @{
+              sourceHash = $build.binaryHash
+              catalogHash = $build.catalogHash
+              binaryHash = (Get-FileHash -LiteralPath "signed/$binaryName").Hash.ToLowerInvariant()
+              file = $binaryName
+              publisherThumbprint = $signature.SignerCertificate.Thumbprint.ToUpperInvariant()
+              signed = $true
+          }
+          [IO.File]::WriteAllText((Join-Path $PWD 'signed/signed.json'), ($metadata | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+      - name: Guardar ejecutable firmado
+        if: ${d} inputs.sign && github.ref_name == github.event.repository.default_branch }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: todoinstala-signed
+          path: signed/
+          if-no-files-found: error
