@@ -55,7 +55,7 @@ namespace Catalogo {
     Directory.CreateDirectory(Path.GetDirectoryName(output));
     using(var input=entry.Open())using(var dest=new FileStream(output,FileMode.CreateNew,FileAccess.Write,FileShare.None)){
      var buffer=new byte[65536];int n;long total=0;
-     while((n=input.Read(buffer,0,buffer.Length))>0){total+=n;if(total>entry.Length)throw new InvalidDataException("Contenido mayor que lo declarado.");dest.Write(buffer,0,n);}
+     while((n=input.Read(buffer,0,buffer.Length))>0){InstallationWork.Check();total+=n;if(total>entry.Length)throw new InvalidDataException("Contenido mayor que lo declarado.");dest.Write(buffer,0,n);}
      if(total!=entry.Length)throw new InvalidDataException("Contenido incompleto.");
     }
    }

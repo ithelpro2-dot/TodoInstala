@@ -33,17 +33,17 @@ namespace Catalogo {
     ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;
     var request=(HttpWebRequest)WebRequest.Create(Url);request.UserAgent="TodoInstala/0.1";request.Timeout=60000;request.ReadWriteTimeout=60000;
     log("Descarga oficial: "+Url);
-    using(var response=(HttpWebResponse)request.GetResponse()){
+    using(var response=InstallationWork.Receive(request)){
      if(response.ResponseUri.Scheme!="https")throw new InvalidDataException("Redirección de descarga no segura.");
      using(var input=response.GetResponseStream())using(var output=new FileStream(file,FileMode.CreateNew,FileAccess.Write,FileShare.None)){
-      var buffer=new byte[65536];int n;long total=0;while((n=input.Read(buffer,0,buffer.Length))>0){total+=n;if(total>400L*1024*1024)throw new InvalidDataException("Descarga demasiado grande.");output.Write(buffer,0,n);}
+      var buffer=new byte[65536];int n;long total=0;while((n=input.Read(buffer,0,buffer.Length))>0){InstallationWork.Check();total+=n;if(total>400L*1024*1024)throw new InvalidDataException("Descarga demasiado grande.");output.Write(buffer,0,n);}
      }
     }
     using(var verified=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.Read)){
      using(var sha=SHA256.Create())if(BitConverter.ToString(sha.ComputeHash(verified)).Replace("-","").ToLowerInvariant()!=Hash)
       throw new InvalidDataException("La descarga de DeepSeek no coincide con la versión revisada.");
      log("SHA-256 verificado: "+Hash);
-     using(var p=Process.Start(new ProcessStartInfo(file,"/S"){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=dir})){
+     using(var p=InstallationWork.StartInstaller(new ProcessStartInfo(file,"/S"){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=dir})){
       if(p==null)throw new InvalidOperationException("No se pudo iniciar DeepSeek.");p.WaitForExit();var code=p.ExitCode;
       if(code!=0&&code!=3010)return code;
       if(!Installed(true))throw new InvalidOperationException("No se confirmó DeepSeek Harness 0.2.2-rc.1 en la cuenta de usuario.");

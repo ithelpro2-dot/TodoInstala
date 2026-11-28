@@ -33,16 +33,16 @@ namespace Catalogo {
     ServicePointManager.SecurityProtocol=SecurityProtocolType.Tls12;
     var req=(HttpWebRequest)WebRequest.Create(Url);req.UserAgent="TodoInstala/0.1";req.Timeout=60000;req.ReadWriteTimeout=60000;
     log("Descarga oficial: "+Url);
-    using(var response=(HttpWebResponse)req.GetResponse()){
+    using(var response=InstallationWork.Receive(req)){
      if(response.ResponseUri.Scheme!="https")throw new InvalidDataException("Redirección insegura.");
      using(var input=response.GetResponseStream())using(var output=new FileStream(file,FileMode.CreateNew,FileAccess.Write,FileShare.None)){
-      var b=new byte[65536];int n;long total=0;while((n=input.Read(b,0,b.Length))>0){total+=n;if(total>250L*1024*1024)throw new InvalidDataException("Descarga demasiado grande.");output.Write(b,0,n);}
+      var b=new byte[65536];int n;long total=0;while((n=input.Read(b,0,b.Length))>0){InstallationWork.Check();total+=n;if(total>250L*1024*1024)throw new InvalidDataException("Descarga demasiado grande.");output.Write(b,0,n);}
      }
     }
     using(var verified=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.Read)){
      using(var sha=SHA256.Create())if(BitConverter.ToString(sha.ComputeHash(verified)).Replace("-","").ToLowerInvariant()!=Hash)throw new InvalidDataException("La descarga no coincide con la versión revisada de Spotify.");
      log("SHA-256 verificado: "+Hash);
-     using(var p=Process.Start(new ProcessStartInfo(file,"/silent /skip-app-launch"){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=dir})){
+     using(var p=InstallationWork.StartInstaller(new ProcessStartInfo(file,"/silent /skip-app-launch"){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=dir})){
       if(p==null)throw new InvalidOperationException("No se pudo iniciar Spotify.");p.WaitForExit();var code=p.ExitCode;if(code!=0)return code;
       if(!Confirmed())throw new InvalidOperationException("No se confirmó la versión revisada de Spotify en la cuenta original.");
       log("Spotify confirmado en la cuenta original.");return 0;

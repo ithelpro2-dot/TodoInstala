@@ -15,10 +15,15 @@ o el procedimiento de desinstalación del fabricante.
 
 ## Code signing policy
 
+Servicio solicitado: firma gratuita mediante [SignPath.io](https://about.signpath.io/), con certificado de [SignPath Foundation](https://signpath.org/).
+
+- Código y revisión: [ithelpro2-dot](https://github.com/ithelpro2-dot), titular del repositorio.
+- Aprobación de firma: titular del repositorio, mediante aprobación manual en SignPath tras la admisión.
+
 La integración con SignPath Foundation está preparada y pendiente de admisión.
 GitHub Actions compila desde este repositorio. La opción de firmar solicita la
 firma de la versión en SignPath y espera la aprobación de un responsable del
-proyecto. La compilación y las solicitudes de firma se inician manualmente.
+proyecto. La compilación se comprueba al actualizar la rama principal. Las solicitudes de firma se inician manualmente.
 
 La configuración de artefacto está en `signpath/artifact.xml`. Configura un
 proyecto con verificación de origen para este repositorio y una política de
@@ -27,6 +32,8 @@ de solicitud como secreto de Actions `SIGNPATH_API_TOKEN`. Usa las variables
 `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`,
 `SIGNPATH_SIGNING_POLICY_SLUG` y `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG`
 para los valores del proyecto aprobado.
+
+### Privacidad
 
 El ejecutable solicita descargas a los fabricantes, Microsoft Store, WinGet
 u otros proveedores según los programas elegidos. Esos servicios reciben los

@@ -15,7 +15,7 @@ namespace Catalogo {
   public static string RemoveOwned(string value,string entry,bool owned){Validate(entry);if(!owned||String.IsNullOrEmpty(value))return value;var parts=value.Split(';').ToList();var matches=parts.Select((s,i)=>new {s,i}).Where(x=>Equal(x.s,entry)).ToArray();if(matches.Length==1)parts.RemoveAt(matches[0].i);return String.Join(";",parts);}
   public static bool Register(string entry){return Register(entry,"gemini.cmd");}
   public static bool Register(string entry,string command){
-   if(command!="gemini.cmd"&&command!="cline.exe"&&command!="openclaw.cmd")throw new InvalidDataException("Comando no autorizado.");
+   if(command!="gemini.cmd"&&command!="cline.exe"&&command!="openclaw.cmd"&&command!="cn.cmd"&&command!="aider.exe")throw new InvalidDataException("Comando no autorizado.");
    Validate(entry);if(!Directory.Exists(entry)||(File.GetAttributes(entry)&FileAttributes.ReparsePoint)!=0||!File.Exists(Path.Combine(entry,command)))throw new InvalidDataException("Falta el lanzador preparado.");
    using(var key=Registry.CurrentUser.CreateSubKey("Environment")){
     var raw=key.GetValue("Path",null,RegistryValueOptions.DoNotExpandEnvironmentNames);if(raw!=null&&!(raw is string))throw new InvalidDataException("PATH tiene un tipo no compatible.");
